@@ -1,0 +1,400 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { PHASES, STATUS_CONFIG, INDICATOR_CONFIG } from '@/lib/constants'
+import { format } from 'date-fns'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { CalendarIcon, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import type { Company, OpportunityWithCompany, OpportunityStatus, IndicatorStatus, PhaseNumber } from '@/types/database'
+
+interface OpportunityModalProps {
+  open: boolean
+  onClose: () => void
+  opportunity: OpportunityWithCompany | null
+  companies: Company[]
+  onSave: () => void
+}
+
+export function OpportunityModal({
+  open,
+  onClose,
+  opportunity,
+  companies,
+  onSave,
+}: OpportunityModalProps) {
+  const supabase = createClient()
+  const isEditing = !!opportunity
+
+  const [formData, setFormData] = useState({
+    company_id: '',
+    company: '',  // Text field for company name
+    name: '',
+    description: '',
+    estimated_som: '',
+    status: 'planned' as OpportunityStatus,
+    messaging_indicator: 'red' as IndicatorStatus,
+    campaign_indicator: 'red' as IndicatorStatus,
+    pricing_indicator: 'red' as IndicatorStatus,
+    sales_alignment_indicator: 'red' as IndicatorStatus,
+    next_steps: '',
+    target_date: null as Date | null,
+    phase: 0,  // Number, not string
+  })
+
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    if (opportunity) {
+      setFormData({
+        company_id: opportunity.company_id || '',
+        company: opportunity.company || '',
+        name: opportunity.name,
+        description: opportunity.description || '',
+        estimated_som: opportunity.estimated_som?.toString() || '',
+        status: (opportunity.status as OpportunityStatus) || 'planned',
+        messaging_indicator: opportunity.messaging_indicator || 'red',
+        campaign_indicator: opportunity.campaign_indicator || 'red',
+        pricing_indicator: opportunity.pricing_indicator || 'red',
+        sales_alignment_indicator: opportunity.sales_alignment_indicator || 'red',
+        next_steps: opportunity.next_steps || '',
+        target_date: opportunity.target_date ? new Date(opportunity.target_date) : null,
+        phase: typeof opportunity.phase === 'number' ? opportunity.phase : parseInt(String(opportunity.phase)) || 0,
+      })
+    } else {
+      setFormData({
+        company_id: companies[0]?.id || '',
+        company: companies[0]?.name || '',
+        name: '',
+        description: '',
+        estimated_som: '',
+        status: 'planned',
+        messaging_indicator: 'red',
+        campaign_indicator: 'red',
+        pricing_indicator: 'red',
+        sales_alignment_indicator: 'red',
+        next_steps: '',
+        target_date: null,
+        phase: 0,
+      })
+    }
+  }, [opportunity, companies])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      // Find company name from selected company_id
+      const selectedCompany = companies.find(c => c.id === formData.company_id)
+
+      const data: Record<string, unknown> = {
+        company_id: formData.company_id || null,
+        company: selectedCompany?.name || formData.company || null,
+        name: formData.name,
+        description: formData.description || null,
+        estimated_som: formData.estimated_som ? parseFloat(formData.estimated_som) : null,
+        status: formData.status as string,
+        messaging_indicator: formData.messaging_indicator,
+        campaign_indicator: formData.campaign_indicator,
+        pricing_indicator: formData.pricing_indicator,
+        sales_alignment_indicator: formData.sales_alignment_indicator,
+        next_steps: formData.next_steps || null,
+        target_date: formData.target_date ? format(formData.target_date, 'yyyy-MM-dd') : null,
+        phase: formData.phase,
+      }
+
+      if (isEditing && opportunity) {
+        await supabase.from('opportunities').update(data as never).eq('id', opportunity.id)
+      } else {
+        // Generate a unique ID since the table requires it
+        const newId = crypto.randomUUID()
+        await supabase.from('opportunities').insert({ ...data, id: newId } as never)
+      }
+
+      onSave()
+      onClose()
+    } catch (error) {
+      console.error('Failed to save opportunity:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!opportunity) return
+    if (!confirm('Are you sure you want to delete this opportunity?')) return
+
+    setDeleting(true)
+    try {
+      await supabase.from('opportunities').delete().eq('id', opportunity.id)
+      onSave()
+      onClose()
+    } catch (error) {
+      console.error('Failed to delete opportunity:', error)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? 'Edit Opportunity' : 'Create New Opportunity'}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-4 py-4">
+          {/* Company */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Company</Label>
+            <Select
+              value={formData.company_id}
+              onValueChange={(value) => {
+                const selectedCompany = companies.find(c => c.id === value)
+                setFormData({
+                  ...formData,
+                  company_id: value,
+                  company: selectedCompany?.name || ''
+                })
+              }}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select company" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Name */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Name</Label>
+            <Input
+              className="col-span-3"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Opportunity name"
+            />
+          </div>
+
+          {/* Description */}
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right pt-2">Description</Label>
+            <Textarea
+              className="col-span-3"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Opportunity description"
+              rows={3}
+            />
+          </div>
+
+          {/* Phase */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Phase</Label>
+            <Select
+              value={String(formData.phase)}
+              onValueChange={(value) => setFormData({ ...formData, phase: parseInt(value) })}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PHASES.map((phase) => (
+                  <SelectItem key={phase.number} value={phase.number}>
+                    Phase {phase.number}: {phase.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Estimated SOM */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Est. 1-yr SOM</Label>
+            <div className="col-span-3 flex items-center gap-2">
+              <span className="text-gray-500">$</span>
+              <Input
+                type="number"
+                value={formData.estimated_som}
+                onChange={(e) => setFormData({ ...formData, estimated_som: e.target.value })}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          {/* Status */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Status</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value) => setFormData({ ...formData, status: value as OpportunityStatus })}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                  <SelectItem key={key} value={key}>
+                    <span className="flex items-center gap-2">
+                      <span className={cn('w-3 h-3 rounded-full', config.bgColor)} />
+                      {config.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Indicators */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Messaging</Label>
+            <IndicatorSelect
+              value={formData.messaging_indicator}
+              onChange={(value) => setFormData({ ...formData, messaging_indicator: value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Campaign</Label>
+            <IndicatorSelect
+              value={formData.campaign_indicator}
+              onChange={(value) => setFormData({ ...formData, campaign_indicator: value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Pricing</Label>
+            <IndicatorSelect
+              value={formData.pricing_indicator}
+              onChange={(value) => setFormData({ ...formData, pricing_indicator: value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Sales Align</Label>
+            <IndicatorSelect
+              value={formData.sales_alignment_indicator}
+              onChange={(value) => setFormData({ ...formData, sales_alignment_indicator: value })}
+            />
+          </div>
+
+          {/* Next Steps */}
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right pt-2">Next Steps</Label>
+            <Textarea
+              className="col-span-3"
+              value={formData.next_steps}
+              onChange={(e) => setFormData({ ...formData, next_steps: e.target.value })}
+              placeholder="Next steps..."
+              rows={2}
+            />
+          </div>
+
+          {/* Target Date */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Target Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'col-span-3 justify-start text-left font-normal',
+                    !formData.target_date && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.target_date
+                    ? format(formData.target_date, 'PPP')
+                    : 'Pick a date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={formData.target_date || undefined}
+                  onSelect={(date) => setFormData({ ...formData, target_date: date || null })}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+
+        <DialogFooter className="flex justify-between">
+          {isEditing && (
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving || !formData.name || !formData.company_id}>
+              {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create'}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function IndicatorSelect({
+  value,
+  onChange,
+}: {
+  value: IndicatorStatus
+  onChange: (value: IndicatorStatus) => void
+}) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as IndicatorStatus)}>
+      <SelectTrigger className="col-span-3">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(INDICATOR_CONFIG).map(([key, config]) => (
+          <SelectItem key={key} value={key}>
+            <span className="flex items-center gap-2">
+              <span className={cn('w-3 h-3 rounded-full', config.bgColor)} />
+              <span className="capitalize">{key}</span>
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
