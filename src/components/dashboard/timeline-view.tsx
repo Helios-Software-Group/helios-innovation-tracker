@@ -107,10 +107,11 @@ function TimelineCard({ opportunity, onClick }: TimelineCardProps) {
           </span>
         )}
         {/* Demo Links and Attachments icons */}
-        <span className="flex items-center gap-1 ml-auto">
+        <span className="flex items-center gap-1.5 ml-auto">
           {opportunity.demo_links && opportunity.demo_links.length > 0 && (
             <span className="flex items-center gap-0.5 text-blue-500" title="Has demo links">
               <LinkIcon className="h-3 w-3" />
+              <span className="text-[10px]">Demo</span>
             </span>
           )}
           {opportunity.attachments && opportunity.attachments.length > 0 && (

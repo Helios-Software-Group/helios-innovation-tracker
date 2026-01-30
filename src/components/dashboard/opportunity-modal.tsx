@@ -149,16 +149,26 @@ export function OpportunityModal({
         .from('attachments')
         .upload(filePath, file)
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError)
+        alert(`Upload failed: ${uploadError.message}. Make sure the 'attachments' storage bucket exists and has proper policies.`)
+        throw uploadError
+      }
 
       // Save to database
-      await supabase.from('attachments').insert({
+      const { error: dbError } = await supabase.from('attachments').insert({
         opportunity_id: opportunity.id,
         file_name: file.name,
         file_path: filePath,
         file_size: file.size,
         file_type: file.type,
       } as never)
+
+      if (dbError) {
+        console.error('Database insert error:', dbError)
+        alert(`Failed to save attachment record: ${dbError.message}`)
+        throw dbError
+      }
 
       // Refresh attachments list
       fetchAttachments(opportunity.id)
