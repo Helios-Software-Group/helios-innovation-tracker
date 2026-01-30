@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { CalendarIcon, ChevronDown, ChevronUp, ChevronsUpDown, Trash2, Check, X, HelpCircle, Link as LinkIcon, Paperclip, ChevronRight, FileText, GripVertical } from 'lucide-react'
+import { CalendarIcon, ChevronDown, ChevronUp, ChevronsUpDown, Trash2, Check, X, HelpCircle, Link as LinkIcon, Paperclip, ChevronRight, FileText, GripVertical, Plus, ExternalLink, Pencil, Download } from 'lucide-react'
 import type { Company, OpportunityWithCompany, OpportunityStatus, IndicatorStatus } from '@/types/database'
 
 // Column descriptions for tooltips
@@ -347,10 +347,10 @@ export function TableView({ opportunities, companies, onRefresh }: TableViewProp
               <ResizableHeader column="name" sortable field="name" tooltipKey="name" className="px-1">Opportunity</ResizableHeader>
               <ResizableHeader column="som" sortable field="estimated_som" tooltipKey="estimated_som" className="px-1">SOM</ResizableHeader>
               <ResizableHeader column="status" sortable field="status" tooltipKey="status" className="px-1">Status</ResizableHeader>
-              <ResizableHeader column="m" tooltipKey="messaging" className="text-center px-0">M</ResizableHeader>
-              <ResizableHeader column="c" tooltipKey="campaign" className="text-center px-0">C</ResizableHeader>
-              <ResizableHeader column="p" tooltipKey="pricing" className="text-center px-0">P</ResizableHeader>
-              <ResizableHeader column="s" tooltipKey="sales" className="text-center px-0">S</ResizableHeader>
+              <ResizableHeader column="m" tooltipKey="messaging" className="text-center px-0">Mes.</ResizableHeader>
+              <ResizableHeader column="c" tooltipKey="campaign" className="text-center px-0">Camp.</ResizableHeader>
+              <ResizableHeader column="p" tooltipKey="pricing" className="text-center px-0">Price.</ResizableHeader>
+              <ResizableHeader column="s" tooltipKey="sales" className="text-center px-0">Sales</ResizableHeader>
               <ResizableHeader column="nextSteps" tooltipKey="next_steps" className="px-1">Next Steps</ResizableHeader>
               <ResizableHeader column="demo" tooltipKey="demo_links" className="text-center px-0">Demo</ResizableHeader>
               <ResizableHeader column="files" tooltipKey="attachments" className="text-center px-0">Files</ResizableHeader>
@@ -644,38 +644,122 @@ function OpportunityRow({
           )}
         </TableCell>
 
-        {/* Demo Links */}
+        {/* Demo Links - Clickable */}
         <TableCell className="text-center px-0 py-0.5" style={{ width: w('demo'), maxWidth: w('demo') }}>
-          {demoLinksCount > 0 ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center justify-center gap-0.5 text-blue-500">
-                  <LinkIcon className="h-3 w-3" />
-                  <span className="text-[9px]">{demoLinksCount}</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "h-6 px-1 text-[9px] cursor-pointer",
+                  demoLinksCount > 0 ? "text-blue-500 hover:text-blue-700" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <LinkIcon className="h-3 w-3" />
+                {demoLinksCount > 0 && <span className="ml-0.5">{demoLinksCount}</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" side="bottom" align="center">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-xs">Demo Links</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => {
+                      const newLink = prompt('Enter demo link URL:')
+                      if (newLink) {
+                        const currentLinks = opportunity.demo_links || []
+                        updateField(opportunity.id, 'demo_links', [...currentLinks, newLink])
+                      }
+                    }}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add
+                  </Button>
                 </div>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs">
-                <p className="font-medium text-xs">Demo Links</p>
-                {opportunity.demo_links?.map((link, i) => (
-                  <p key={i} className="text-[10px] text-gray-500 truncate">{link}</p>
-                ))}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <span className="text-gray-300 text-[9px]">-</span>
-          )}
+                {demoLinksCount > 0 ? (
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {opportunity.demo_links?.map((link, i) => (
+                      <div key={i} className="flex items-center gap-1 group">
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-blue-600 hover:underline flex-1 truncate flex items-center gap-1"
+                        >
+                          <ExternalLink className="h-2.5 w-2.5 flex-shrink-0" />
+                          {link}
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4 opacity-0 group-hover:opacity-100 text-red-500"
+                          onClick={() => {
+                            const newLinks = opportunity.demo_links?.filter((_, idx) => idx !== i) || []
+                            updateField(opportunity.id, 'demo_links', newLinks)
+                          }}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-gray-400 text-center py-2">No demo links yet</p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </TableCell>
 
-        {/* Attachments */}
+        {/* Attachments - Clickable */}
         <TableCell className="text-center px-0 py-0.5" style={{ width: w('files'), maxWidth: w('files') }}>
-          {attachmentsCount > 0 ? (
-            <div className="flex items-center justify-center gap-0.5 text-blue-500">
-              <Paperclip className="h-3 w-3" />
-              <span className="text-[9px]">{attachmentsCount}</span>
-            </div>
-          ) : (
-            <span className="text-gray-300 text-[9px]">-</span>
-          )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "h-6 px-1 text-[9px] cursor-pointer",
+                  attachmentsCount > 0 ? "text-blue-500 hover:text-blue-700" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <Paperclip className="h-3 w-3" />
+                {attachmentsCount > 0 && <span className="ml-0.5">{attachmentsCount}</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" side="bottom" align="center">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-xs">Attachments</span>
+                  <span className="text-[10px] text-gray-400">(Upload via edit modal)</span>
+                </div>
+                {attachmentsCount > 0 ? (
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {opportunity.attachments?.map((att) => (
+                      <div key={att.id} className="flex items-center gap-1 group">
+                        <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                        <span className="text-[10px] text-gray-600 flex-1 truncate">
+                          {att.file_name}
+                        </span>
+                        <a
+                          href={att.file_path}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:text-blue-700"
+                        >
+                          <Download className="h-3 w-3" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-gray-400 text-center py-2">No attachments yet</p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </TableCell>
 
         {/* Target Date */}
