@@ -23,7 +23,8 @@ import {
   Edit,
   Trash2,
   Plus,
-  Link as LinkIcon
+  Link as LinkIcon,
+  ZoomIn
 } from 'lucide-react'
 
 interface OpportunityDetailModalProps {
@@ -43,6 +44,7 @@ export function OpportunityDetailModal({
 }: OpportunityDetailModalProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [loading, setLoading] = useState(false)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -221,33 +223,57 @@ export function OpportunityDetailModal({
                       className="border rounded-lg p-3 flex items-start gap-3 group hover:border-blue-300 transition-colors"
                     >
                       {isImage ? (
-                        <img
-                          src={publicUrl}
-                          alt={att.file_name}
-                          className="w-12 h-12 object-cover rounded"
-                        />
+                        <div
+                          className="relative w-12 h-12 cursor-pointer"
+                          onClick={() => setPreviewImage(publicUrl)}
+                        >
+                          <img
+                            src={publicUrl}
+                            alt={att.file_name}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                          <div className="absolute inset-0 bg-black/0 hover:bg-black/30 rounded flex items-center justify-center transition-colors">
+                            <ZoomIn className="h-4 w-4 text-white opacity-0 group-hover:opacity-100" />
+                          </div>
+                        </div>
                       ) : (
                         <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-gray-400">
                           {getFileIcon(att.file_type)}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{att.file_name}</p>
+                        <p
+                          className={`text-sm font-medium truncate ${isImage ? 'cursor-pointer hover:text-blue-600' : ''}`}
+                          onClick={() => isImage && setPreviewImage(publicUrl)}
+                        >
+                          {att.file_name}
+                        </p>
                         <p className="text-xs text-gray-400">
                           {formatFileSize(att.file_size)}
                         </p>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {isImage && (
+                          <button
+                            onClick={() => setPreviewImage(publicUrl)}
+                            className="p-1 text-gray-400 hover:text-blue-600"
+                            title="View full size"
+                          >
+                            <ZoomIn className="h-4 w-4" />
+                          </button>
+                        )}
                         <a
                           href={publicUrl}
                           download={att.file_name}
                           className="p-1 text-gray-400 hover:text-blue-600"
+                          title="Download"
                         >
                           <Download className="h-4 w-4" />
                         </a>
                         <button
                           onClick={() => handleDeleteAttachment(att.id, att.file_path)}
                           className="p-1 text-gray-400 hover:text-red-600"
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -258,6 +284,27 @@ export function OpportunityDetailModal({
               </div>
             ) : (
               <p className="text-sm text-gray-400 italic">No attachments</p>
+            )}
+
+            {/* Image Preview Modal */}
+            {previewImage && (
+              <div
+                className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+                onClick={() => setPreviewImage(null)}
+              >
+                <button
+                  className="absolute top-4 right-4 text-white hover:text-gray-300"
+                  onClick={() => setPreviewImage(null)}
+                >
+                  <X className="h-8 w-8" />
+                </button>
+                <img
+                  src={previewImage}
+                  alt="Preview"
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
             )}
           </div>
 

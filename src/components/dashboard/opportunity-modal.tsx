@@ -484,26 +484,49 @@ export function OpportunityModal({
               <Label className="text-right pt-2 flex items-center gap-1">
                 <Paperclip className="h-4 w-4" />
                 Attachments
+                {attachments.length > 0 && (
+                  <span className="ml-1 bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full">
+                    {attachments.length}
+                  </span>
+                )}
               </Label>
               <div className="col-span-3 space-y-3">
                 {attachments.length > 0 && (
                   <div className="space-y-2">
-                    {attachments.map((att) => (
-                      <div
-                        key={att.id}
-                        className="flex items-center gap-2 p-2 border rounded-md bg-gray-50"
-                      >
-                        <span className="text-sm flex-1 truncate">{att.file_name}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleDeleteAttachment(att)}
+                    {attachments.map((att) => {
+                      const isImage = att.file_type?.startsWith('image/')
+                      const publicUrl = supabase.storage.from('Attachments').getPublicUrl(att.file_path).data.publicUrl
+                      return (
+                        <div
+                          key={att.id}
+                          className="flex items-center gap-3 p-2 border rounded-md bg-green-50 border-green-200"
                         >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
+                          {isImage ? (
+                            <img
+                              src={publicUrl}
+                              alt={att.file_name}
+                              className="w-10 h-10 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                              <Paperclip className="h-4 w-4" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium truncate block">{att.file_name}</span>
+                            <span className="text-xs text-green-600">Uploaded</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-400 hover:text-red-600"
+                            onClick={() => handleDeleteAttachment(att)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
                 <FileUpload
