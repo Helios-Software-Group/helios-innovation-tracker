@@ -6,7 +6,7 @@ import { StatusPill } from './status-pill'
 import { IndicatorGroup } from './indicator-bubble'
 import type { OpportunityWithCompany, PhaseNumber } from '@/types/database'
 import { format } from 'date-fns'
-import { CalendarDays, DollarSign } from 'lucide-react'
+import { CalendarDays, DollarSign, Link as LinkIcon, Paperclip } from 'lucide-react'
 
 interface TimelineViewProps {
   opportunities: OpportunityWithCompany[]
@@ -92,7 +92,7 @@ function TimelineCard({ opportunity, onClick }: TimelineCardProps) {
         {opportunity.name}
       </div>
 
-      {/* Metadata Row: SOM + Target Date */}
+      {/* Metadata Row: SOM + Target Date + Icons */}
       <div className="flex items-center gap-3 text-xs text-gray-500 mb-1.5">
         {opportunity.estimated_som && (
           <span className="flex items-center gap-0.5">
@@ -106,6 +106,19 @@ function TimelineCard({ opportunity, onClick }: TimelineCardProps) {
             {format(new Date(opportunity.target_date), 'MMM d')}
           </span>
         )}
+        {/* Demo Links and Attachments icons */}
+        <span className="flex items-center gap-1 ml-auto">
+          {opportunity.demo_links && opportunity.demo_links.length > 0 && (
+            <span className="flex items-center gap-0.5 text-blue-500" title="Has demo links">
+              <LinkIcon className="h-3 w-3" />
+            </span>
+          )}
+          {opportunity.attachments && opportunity.attachments.length > 0 && (
+            <span className="flex items-center gap-0.5 text-blue-500" title="Has attachments">
+              <Paperclip className="h-3 w-3" />
+            </span>
+          )}
+        </span>
       </div>
 
       {/* Indicator Bubbles */}

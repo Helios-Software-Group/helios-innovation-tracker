@@ -24,7 +24,10 @@ import {
 } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { CalendarIcon, Trash2 } from 'lucide-react'
+import { CalendarIcon, Trash2, Plus, X, Link as LinkIcon, Paperclip } from 'lucide-react'
+import { FileUpload } from '@/components/ui/file-upload'
+import { Separator } from '@/components/ui/separator'
+import type { Attachment } from '@/types/database'
 import { cn } from '@/lib/utils'
 import type { Company, OpportunityWithCompany, OpportunityStatus, IndicatorStatus, PhaseNumber } from '@/types/database'
 
@@ -64,6 +67,10 @@ export function OpportunityModal({
 
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [demoLinks, setDemoLinks] = useState<string[]>([])
+  const [newLink, setNewLink] = useState('')
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     if (opportunity) {
@@ -82,6 +89,9 @@ export function OpportunityModal({
         target_date: opportunity.target_date ? new Date(opportunity.target_date) : null,
         phase: typeof opportunity.phase === 'number' ? opportunity.phase : parseInt(String(opportunity.phase)) || 0,
       })
+      setDemoLinks(opportunity.demo_links || [])
+      // Fetch attachments
+      fetchAttachments(opportunity.id)
     } else {
       setFormData({
         company_id: companies[0]?.id || '',
@@ -98,8 +108,72 @@ export function OpportunityModal({
         target_date: null,
         phase: 0,
       })
+      setDemoLinks([])
+      setAttachments([])
     }
   }, [opportunity, companies])
+
+  const fetchAttachments = async (opportunityId: string) => {
+    const { data } = await supabase
+      .from('attachments')
+      .select('*')
+      .eq('opportunity_id', opportunityId)
+      .order('uploaded_at', { ascending: false })
+    setAttachments(data || [])
+  }
+
+  const handleAddLink = () => {
+    if (newLink.trim()) {
+      // Add https:// if no protocol specified
+      let url = newLink.trim()
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url
+      }
+      setDemoLinks([...demoLinks, url])
+      setNewLink('')
+    }
+  }
+
+  const handleRemoveLink = (index: number) => {
+    setDemoLinks(demoLinks.filter((_, i) => i !== index))
+  }
+
+  const handleFileUpload = async (file: File) => {
+    if (!opportunity) return
+    setUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${opportunity.id}/${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      // Save to database
+      await supabase.from('attachments').insert({
+        opportunity_id: opportunity.id,
+        file_name: file.name,
+        file_path: filePath,
+        file_size: file.size,
+        file_type: file.type,
+      } as never)
+
+      // Refresh attachments list
+      fetchAttachments(opportunity.id)
+    } catch (error) {
+      console.error('Upload failed:', error)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDeleteAttachment = async (attachment: Attachment) => {
+    await supabase.storage.from('attachments').remove([attachment.file_path])
+    await supabase.from('attachments').delete().eq('id', attachment.id)
+    setAttachments(attachments.filter(a => a.id !== attachment.id))
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -121,6 +195,7 @@ export function OpportunityModal({
         next_steps: formData.next_steps || null,
         target_date: formData.target_date ? format(formData.target_date, 'yyyy-MM-dd') : null,
         phase: formData.phase,
+        demo_links: demoLinks.length > 0 ? demoLinks : null,
       }
 
       if (isEditing && opportunity) {
@@ -346,6 +421,88 @@ export function OpportunityModal({
               </PopoverContent>
             </Popover>
           </div>
+
+          <Separator className="my-2" />
+
+          {/* Demo Links */}
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right pt-2 flex items-center gap-1">
+              <LinkIcon className="h-4 w-4" />
+              Demo Links
+            </Label>
+            <div className="col-span-3 space-y-2">
+              {demoLinks.map((link, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <Input
+                    value={link}
+                    readOnly
+                    className="flex-1 text-sm text-blue-600"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleRemoveLink(idx)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newLink}
+                  onChange={(e) => setNewLink(e.target.value)}
+                  placeholder="https://example.com/demo"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddLink())}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddLink}
+                  disabled={!newLink.trim()}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Attachments - only show when editing */}
+          {isEditing && (
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-2 flex items-center gap-1">
+                <Paperclip className="h-4 w-4" />
+                Attachments
+              </Label>
+              <div className="col-span-3 space-y-3">
+                {attachments.length > 0 && (
+                  <div className="space-y-2">
+                    {attachments.map((att) => (
+                      <div
+                        key={att.id}
+                        className="flex items-center gap-2 p-2 border rounded-md bg-gray-50"
+                      >
+                        <span className="text-sm flex-1 truncate">{att.file_name}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleDeleteAttachment(att)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <FileUpload
+                  onUpload={handleFileUpload}
+                  disabled={uploading}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex justify-between">

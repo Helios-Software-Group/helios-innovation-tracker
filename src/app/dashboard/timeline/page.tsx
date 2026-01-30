@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useOpportunities } from '@/hooks/use-opportunities'
 import { TimelineView } from '@/components/dashboard/timeline-view'
 import { OpportunityModal } from '@/components/dashboard/opportunity-modal'
+import { OpportunityDetailModal } from '@/components/dashboard/opportunity-detail-modal'
 import { Button } from '@/components/ui/button'
 import { Plus, RefreshCw } from 'lucide-react'
 import type { OpportunityWithCompany } from '@/types/database'
@@ -11,23 +12,34 @@ import type { OpportunityWithCompany } from '@/types/database'
 export default function TimelinePage() {
   const { opportunities, companies, loading, error, refetch } = useOpportunities()
   const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityWithCompany | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
   const handleSelectOpportunity = (opp: OpportunityWithCompany) => {
     setSelectedOpportunity(opp)
-    setIsCreating(false)
-    setIsModalOpen(true)
+    setIsDetailModalOpen(true) // Open detail modal first
   }
 
   const handleCreateNew = () => {
     setSelectedOpportunity(null)
     setIsCreating(true)
-    setIsModalOpen(true)
+    setIsEditModalOpen(true)
   }
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false)
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false)
+    setSelectedOpportunity(null)
+  }
+
+  const handleEditFromDetail = () => {
+    setIsDetailModalOpen(false)
+    setIsCreating(false)
+    setIsEditModalOpen(true)
+  }
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false)
     setSelectedOpportunity(null)
     setIsCreating(false)
   }
@@ -75,9 +87,19 @@ export default function TimelinePage() {
         onSelectOpportunity={handleSelectOpportunity}
       />
 
+      {/* Detail Modal - opens first when clicking a card */}
+      <OpportunityDetailModal
+        open={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+        opportunity={selectedOpportunity}
+        onEdit={handleEditFromDetail}
+        onRefresh={refetch}
+      />
+
+      {/* Edit/Create Modal */}
       <OpportunityModal
-        open={isModalOpen}
-        onClose={handleCloseModal}
+        open={isEditModalOpen}
+        onClose={handleCloseEditModal}
         opportunity={isCreating ? null : selectedOpportunity}
         companies={companies}
         onSave={refetch}

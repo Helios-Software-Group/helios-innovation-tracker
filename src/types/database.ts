@@ -74,6 +74,7 @@ export interface Database {
           created_at: string
           updated_at: string
           customer: string | null
+          demo_links: string[] | null
         }
         Insert: {
           id: string  // Required - no default
@@ -101,6 +102,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           customer?: string | null
+          demo_links?: string[] | null
         }
         Update: {
           id?: string
@@ -128,6 +130,39 @@ export interface Database {
           created_at?: string
           updated_at?: string
           customer?: string | null
+          demo_links?: string[] | null
+        }
+      }
+      attachments: {
+        Row: {
+          id: string
+          opportunity_id: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          id?: string
+          opportunity_id: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          id?: string
+          opportunity_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
         }
       }
     }
@@ -144,4 +179,8 @@ export type OpportunityUpdate = Database['public']['Tables']['opportunities']['U
 
 export interface OpportunityWithCompany extends Opportunity {
   companies?: Company | null  // Supabase returns this as 'companies' when using select with join
+  attachments?: Attachment[]  // For joined queries
 }
+
+export type Attachment = Database['public']['Tables']['attachments']['Row']
+export type AttachmentInsert = Database['public']['Tables']['attachments']['Insert']
