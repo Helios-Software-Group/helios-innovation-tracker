@@ -26,7 +26,8 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { CalendarIcon, ChevronDown, ChevronUp, ChevronsUpDown, Trash2, Check, X, HelpCircle, Link as LinkIcon, Paperclip, ChevronRight, FileText, GripVertical, Plus, ExternalLink, Pencil, Download } from 'lucide-react'
+import { CalendarIcon, ChevronDown, ChevronUp, ChevronsUpDown, Trash2, Check, X, HelpCircle, Link as LinkIcon, Paperclip, ChevronRight, FileText, GripVertical, Plus, ExternalLink, Pencil, Download, ZoomIn } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
 import type { Company, OpportunityWithCompany, OpportunityStatus, IndicatorStatus } from '@/types/database'
 import { parseDemoLink, serializeDemoLink, getDemoLinkDisplay } from '@/types/database'
 
@@ -896,57 +897,330 @@ function OpportunityRow({
 
       {/* Expanded row for full details */}
       {isExpanded && (
-        <TableRow className="bg-blue-50/50 border-t-0">
-          <TableCell colSpan={15} className="py-3 px-4">
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              {opportunity.description && (
-                <div>
-                  <h4 className="font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FileText className="h-3 w-3" />
-                    Description
-                  </h4>
-                  <p className="text-gray-600 whitespace-pre-wrap bg-white p-2 rounded border">
-                    {opportunity.description}
-                  </p>
-                </div>
-              )}
-              {opportunity.next_steps && (
-                <div>
-                  <h4 className="font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <ChevronRight className="h-3 w-3" />
-                    Next Steps
-                  </h4>
-                  <p className="text-gray-600 whitespace-pre-wrap bg-white p-2 rounded border">
-                    {opportunity.next_steps}
-                  </p>
-                </div>
-              )}
-              {opportunity.demo_links && opportunity.demo_links.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <LinkIcon className="h-3 w-3" />
-                    Demo Links
-                  </h4>
-                  <div className="space-y-1 bg-white p-2 rounded border">
-                    {opportunity.demo_links.map((link, i) => (
-                      <a
-                        key={i}
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline block truncate"
-                      >
-                        {link}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </TableCell>
-        </TableRow>
+        <ExpandedRowContent
+          opportunity={opportunity}
+          updateField={updateField}
+          supabase={supabase}
+          onPreviewImage={onPreviewImage}
+        />
       )}
     </>
+  )
+}
+
+// Expanded row content component with inline editing
+function ExpandedRowContent({
+  opportunity,
+  updateField,
+  supabase,
+  onPreviewImage,
+}: {
+  opportunity: OpportunityWithCompany
+  updateField: (id: string, field: string, value: unknown) => void
+  supabase: ReturnType<typeof createClient>
+  onPreviewImage: (url: string) => void
+}) {
+  const [editingDescription, setEditingDescription] = useState(false)
+  const [editingNextSteps, setEditingNextSteps] = useState(false)
+  const [descriptionValue, setDescriptionValue] = useState(opportunity.description || '')
+  const [nextStepsValue, setNextStepsValue] = useState(opportunity.next_steps || '')
+
+  const demoLinks = opportunity.demo_links || []
+  const attachments = opportunity.attachments || []
+
+  const handleAddDemo = () => {
+    const url = prompt('Enter demo URL:')
+    if (url) {
+      let finalUrl = url.trim()
+      if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+        finalUrl = 'https://' + finalUrl
+      }
+      const label = prompt('Enter display name (optional):') || ''
+      const newLink = serializeDemoLink({ label, url: finalUrl })
+      updateField(opportunity.id, 'demo_links', [...demoLinks, newLink])
+    }
+  }
+
+  const handleRenameDemo = (index: number) => {
+    const link = parseDemoLink(demoLinks[index])
+    const newLabel = prompt('Enter new display name:', link.label || '')
+    if (newLabel !== null) {
+      const newLinks = [...demoLinks]
+      newLinks[index] = serializeDemoLink({ label: newLabel, url: link.url })
+      updateField(opportunity.id, 'demo_links', newLinks)
+    }
+  }
+
+  const handleDeleteDemo = (index: number) => {
+    const newLinks = demoLinks.filter((_, i) => i !== index)
+    updateField(opportunity.id, 'demo_links', newLinks)
+  }
+
+  const handleRenameFile = async (attId: string, currentName: string) => {
+    const newName = prompt('Enter new file name:', currentName)
+    if (newName && newName !== currentName) {
+      await supabase.from('attachments').update({ file_name: newName } as never).eq('id', attId)
+      // Trigger refresh
+      updateField(opportunity.id, 'updated_at', new Date().toISOString())
+    }
+  }
+
+  return (
+    <TableRow className="bg-blue-50/50 border-t-0">
+      <TableCell colSpan={15} className="py-3 px-4">
+        <div className="grid grid-cols-2 gap-4 text-xs">
+          {/* Description - always show, inline editable */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              Description
+              {!editingDescription && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 ml-1 text-gray-400 hover:text-blue-600"
+                  onClick={() => {
+                    setDescriptionValue(opportunity.description || '')
+                    setEditingDescription(true)
+                  }}
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </Button>
+              )}
+            </h4>
+            {editingDescription ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={descriptionValue}
+                  onChange={(e) => setDescriptionValue(e.target.value)}
+                  className="min-h-[80px] text-xs"
+                  autoFocus
+                />
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => {
+                      updateField(opportunity.id, 'description', descriptionValue)
+                      setEditingDescription(false)
+                    }}
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setEditingDescription(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-600 whitespace-pre-wrap bg-white p-2 rounded border min-h-[40px]">
+                {opportunity.description || <span className="text-gray-400 italic">No description</span>}
+              </p>
+            )}
+          </div>
+
+          {/* Next Steps - always show, inline editable */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <ChevronRight className="h-3 w-3" />
+              Next Steps
+              {!editingNextSteps && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 ml-1 text-gray-400 hover:text-blue-600"
+                  onClick={() => {
+                    setNextStepsValue(opportunity.next_steps || '')
+                    setEditingNextSteps(true)
+                  }}
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </Button>
+              )}
+            </h4>
+            {editingNextSteps ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={nextStepsValue}
+                  onChange={(e) => setNextStepsValue(e.target.value)}
+                  className="min-h-[80px] text-xs"
+                  autoFocus
+                />
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => {
+                      updateField(opportunity.id, 'next_steps', nextStepsValue)
+                      setEditingNextSteps(false)
+                    }}
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setEditingNextSteps(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-600 whitespace-pre-wrap bg-white p-2 rounded border min-h-[40px]">
+                {opportunity.next_steps || <span className="text-gray-400 italic">No next steps</span>}
+              </p>
+            )}
+          </div>
+
+          {/* Demos - with full management */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <LinkIcon className="h-3 w-3" />
+              Demos
+              <span className="text-gray-400 ml-1">({demoLinks.length})</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 ml-1 text-gray-400 hover:text-blue-600"
+                onClick={handleAddDemo}
+              >
+                <Plus className="h-2.5 w-2.5" />
+              </Button>
+            </h4>
+            <div className="bg-white p-2 rounded border min-h-[40px]">
+              {demoLinks.length > 0 ? (
+                <div className="space-y-1.5">
+                  {demoLinks.map((linkStr, i) => {
+                    const link = parseDemoLink(linkStr)
+                    return (
+                      <div key={i} className="flex items-center gap-2 group p-1 rounded hover:bg-gray-50">
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline flex-1 truncate flex items-center gap-1"
+                          title={link.url}
+                        >
+                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                          {getDemoLinkDisplay(link)}
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600"
+                          onClick={() => handleRenameDemo(i)}
+                          title="Rename"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 text-red-500"
+                          onClick={() => handleDeleteDemo(i)}
+                          title="Delete"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <span className="text-gray-400 italic">No demos added</span>
+              )}
+            </div>
+          </div>
+
+          {/* Files - with preview and rename */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <Paperclip className="h-3 w-3" />
+              Files
+              <span className="text-gray-400 ml-1">({attachments.length})</span>
+              <span className="text-[10px] text-gray-400 ml-2">(Upload via edit)</span>
+            </h4>
+            <div className="bg-white p-2 rounded border min-h-[40px]">
+              {attachments.length > 0 ? (
+                <div className="space-y-2">
+                  {attachments.map((att) => {
+                    const isImage = att.file_type?.startsWith('image/')
+                    const publicUrl = supabase.storage.from('Attachments').getPublicUrl(att.file_path).data.publicUrl
+                    return (
+                      <div key={att.id} className="flex items-center gap-2 group p-1 rounded hover:bg-gray-50">
+                        {isImage ? (
+                          <img
+                            src={publicUrl}
+                            alt={att.file_name}
+                            className="w-10 h-10 object-cover rounded cursor-pointer hover:opacity-80"
+                            onClick={() => onPreviewImage(publicUrl)}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <span
+                            className={cn(
+                              "text-xs text-gray-700 truncate block",
+                              isImage && "cursor-pointer hover:text-blue-600"
+                            )}
+                            onClick={() => isImage && onPreviewImage(publicUrl)}
+                            title={att.file_name}
+                          >
+                            {att.file_name}
+                          </span>
+                        </div>
+                        {isImage && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600"
+                            onClick={() => onPreviewImage(publicUrl)}
+                            title="Preview"
+                          >
+                            <ZoomIn className="h-3 w-3" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600"
+                          onClick={() => handleRenameFile(att.id, att.file_name)}
+                          title="Rename"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <a
+                          href={publicUrl}
+                          download={att.file_name}
+                          className="p-1 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Download className="h-3 w-3" />
+                        </a>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <span className="text-gray-400 italic">No files uploaded</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </TableCell>
+    </TableRow>
   )
 }
 

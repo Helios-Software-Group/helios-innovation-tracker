@@ -65,12 +65,9 @@ export default function TimelinePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">AI Opportunity Pipeline</h1>
-          <p className="text-gray-500 text-sm">Timeline view of all opportunities by phase</p>
-        </div>
-        <div className="flex gap-2">
+      <div className="flex items-center justify-center relative">
+        <h1 className="text-2xl font-bold text-center">Helios AI Opportunity Pipeline</h1>
+        <div className="absolute right-0 flex gap-2">
           <Button variant="outline" size="sm" onClick={refetch}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
