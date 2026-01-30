@@ -571,7 +571,7 @@ export function OpportunityModal({
                             onClick={async () => {
                               const newName = prompt('Enter new file name:', att.file_name)
                               if (newName && newName !== att.file_name) {
-                                await supabase.from('attachments').update({ file_name: newName }).eq('id', att.id)
+                                await supabase.from('attachments').update({ file_name: newName } as never).eq('id', att.id)
                                 fetchAttachments(opportunity!.id)
                               }
                             }}
