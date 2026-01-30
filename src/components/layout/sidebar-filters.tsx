@@ -149,53 +149,60 @@ export function SidebarFilters() {
   // Expanded view
   return (
     <aside className="w-64 border-r bg-gray-50 p-4 overflow-y-auto transition-all duration-300">
+      {/* Header with collapse button */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-gray-500" />
-          <h2 className="font-semibold text-sm uppercase text-gray-500">Filters</h2>
-        </div>
-        <div className="flex items-center gap-1">
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2 text-xs">
-              <X className="h-3 w-3 mr-1" />
-              Clear
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="h-7 w-7"
-            title="Collapse sidebar"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </div>
+        <h2 className="font-bold text-sm text-gray-700">HIC Tracker</h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleSidebar}
+          className="h-7 w-7"
+          title="Collapse sidebar"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
       </div>
 
-      {/* Page Navigation - Expanded */}
-      <div className="space-y-1 mb-4">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href
-          return (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start gap-2",
-                  isActive && "bg-blue-100 text-blue-600 hover:bg-blue-100"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Button>
-            </Link>
-          )
-        })}
+      {/* Pages Section */}
+      <div className="mb-4">
+        <h3 className="font-semibold text-xs uppercase text-gray-400 mb-2 px-1">Pages</h3>
+        <div className="space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+            return (
+              <Link key={item.href} href={item.href}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start gap-2 h-9",
+                    isActive && "bg-blue-600 text-white hover:bg-blue-700"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Button>
+              </Link>
+            )
+          })}
+        </div>
       </div>
 
       <Separator className="mb-4" />
+
+      {/* Filters Section */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-gray-400" />
+          <h3 className="font-semibold text-xs uppercase text-gray-400">Filters</h3>
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-xs text-gray-500">
+            <X className="h-3 w-3 mr-1" />
+            Clear
+          </Button>
+        )}
+      </div>
 
       {/* Companies Filter */}
       <div className="space-y-3">

@@ -286,26 +286,6 @@ export function OpportunityDetailModal({
               <p className="text-sm text-gray-400 italic">No attachments</p>
             )}
 
-            {/* Image Preview Modal */}
-            {previewImage && (
-              <div
-                className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-                onClick={() => setPreviewImage(null)}
-              >
-                <button
-                  className="absolute top-4 right-4 text-white hover:text-gray-300"
-                  onClick={() => setPreviewImage(null)}
-                >
-                  <X className="h-8 w-8" />
-                </button>
-                <img
-                  src={previewImage}
-                  alt="Preview"
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            )}
           </div>
 
           {/* Next Steps */}
@@ -320,6 +300,28 @@ export function OpportunityDetailModal({
           )}
         </div>
       </DialogContent>
+
+      {/* Full-screen Image Preview - rendered outside dialog via portal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-8"
+          onClick={() => setPreviewImage(null)}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+        >
+          <button
+            className="absolute top-6 right-6 text-white hover:text-gray-300 z-10"
+            onClick={() => setPreviewImage(null)}
+          >
+            <X className="h-10 w-10" />
+          </button>
+          <img
+            src={previewImage}
+            alt="Preview"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </Dialog>
   )
 }

@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { CalendarIcon, ChevronDown, ChevronUp, ChevronsUpDown, Trash2, Check, X, HelpCircle } from 'lucide-react'
+import { CalendarIcon, ChevronDown, ChevronUp, ChevronsUpDown, Trash2, Check, X, HelpCircle, Link as LinkIcon, Paperclip } from 'lucide-react'
 import type { Company, OpportunityWithCompany, OpportunityStatus, IndicatorStatus } from '@/types/database'
 
 // Column descriptions for tooltips
@@ -77,6 +77,14 @@ const COLUMN_DESCRIPTIONS: Record<string, { title: string; description: string }
   target_date: {
     title: 'Target Date',
     description: 'Target completion or milestone date for the current phase'
+  },
+  demo_links: {
+    title: 'Demo',
+    description: 'Demo links and recordings for this opportunity'
+  },
+  attachments: {
+    title: 'Files',
+    description: 'Attached files, screenshots, and documents'
   }
 }
 
@@ -237,23 +245,23 @@ export function TableView({ opportunities, companies, onRefresh }: TableViewProp
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="rounded-lg overflow-hidden border">
+      <div className="rounded-lg overflow-hidden border text-xs">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <SortHeader field="phase" className="w-28" tooltipKey="phase">Phase</SortHeader>
-              <SortHeader field="company" tooltipKey="company">Company</SortHeader>
-              <SortHeader field="name" tooltipKey="name">Opportunity</SortHeader>
-              <HeaderWithTooltip tooltipKey="description">Description</HeaderWithTooltip>
-              <SortHeader field="estimated_som" tooltipKey="estimated_som">1-yr SOM</SortHeader>
-              <SortHeader field="status" tooltipKey="status">Status</SortHeader>
-              <HeaderWithTooltip tooltipKey="messaging" className="text-center">Msg</HeaderWithTooltip>
-              <HeaderWithTooltip tooltipKey="campaign" className="text-center">Camp</HeaderWithTooltip>
-              <HeaderWithTooltip tooltipKey="pricing" className="text-center">Price</HeaderWithTooltip>
-              <HeaderWithTooltip tooltipKey="sales" className="text-center">Sales</HeaderWithTooltip>
-              <HeaderWithTooltip tooltipKey="next_steps">Next Steps</HeaderWithTooltip>
-              <SortHeader field="target_date" tooltipKey="target_date">Target Date</SortHeader>
-              <TableHead className="w-12"></TableHead>
+              <SortHeader field="phase" className="w-20 px-2" tooltipKey="phase">Phase</SortHeader>
+              <SortHeader field="company" className="px-2" tooltipKey="company">Company</SortHeader>
+              <SortHeader field="name" className="px-2" tooltipKey="name">Opportunity</SortHeader>
+              <SortHeader field="estimated_som" className="px-2 w-20" tooltipKey="estimated_som">SOM</SortHeader>
+              <SortHeader field="status" className="px-2 w-24" tooltipKey="status">Status</SortHeader>
+              <HeaderWithTooltip tooltipKey="messaging" className="text-center px-1 w-10">M</HeaderWithTooltip>
+              <HeaderWithTooltip tooltipKey="campaign" className="text-center px-1 w-10">C</HeaderWithTooltip>
+              <HeaderWithTooltip tooltipKey="pricing" className="text-center px-1 w-10">P</HeaderWithTooltip>
+              <HeaderWithTooltip tooltipKey="sales" className="text-center px-1 w-10">S</HeaderWithTooltip>
+              <HeaderWithTooltip tooltipKey="demo_links" className="text-center px-1 w-10">Demo</HeaderWithTooltip>
+              <HeaderWithTooltip tooltipKey="attachments" className="text-center px-1 w-10">Files</HeaderWithTooltip>
+              <SortHeader field="target_date" className="px-2 w-24" tooltipKey="target_date">Target</SortHeader>
+              <TableHead className="w-8 px-1"></TableHead>
             </TableRow>
           </TableHeader>
         <TableBody>
@@ -337,17 +345,20 @@ function OpportunityRow({
   const companyName = opportunity.companies?.name || opportunity.company || ''
   const phaseInfo = getPhaseInfo(opportunity.phase ?? 0)
 
+  const demoLinksCount = opportunity.demo_links?.length || 0
+  const attachmentsCount = opportunity.attachments?.length || 0
+
   return (
-    <TableRow className="hover:bg-gray-50">
+    <TableRow className="hover:bg-gray-50 h-10">
       {/* Phase */}
-      <TableCell>
+      <TableCell className="px-2 py-1">
         <Select
           value={String(opportunity.phase ?? 0)}
           onValueChange={(value) => updateField(opportunity.id, 'phase', parseInt(value))}
         >
-          <SelectTrigger className="h-8 w-full border hover:border-gray-400 cursor-pointer">
+          <SelectTrigger className="h-6 w-full border hover:border-gray-400 cursor-pointer text-xs">
             <span className={cn(
-              'px-2 py-0.5 rounded text-xs font-medium text-white',
+              'px-1.5 py-0.5 rounded text-[10px] font-medium text-white',
               phaseInfo.headerBgColor
             )}>
               {phaseInfo.shortName}
@@ -358,7 +369,7 @@ function OpportunityRow({
               <SelectItem key={p.number} value={p.number}>
                 <div className="flex items-center gap-2">
                   <span className={cn('w-2 h-2 rounded-full', p.headerBgColor)} />
-                  <span>Phase {p.number}: {p.shortName}</span>
+                  <span className="text-xs">{p.shortName}</span>
                 </div>
               </SelectItem>
             ))}
@@ -367,7 +378,7 @@ function OpportunityRow({
       </TableCell>
 
       {/* Company */}
-      <TableCell>
+      <TableCell className="px-2 py-1">
         <Select
           value={opportunity.company_id || ''}
           onValueChange={(value) => {
@@ -378,12 +389,12 @@ function OpportunityRow({
             }
           }}
         >
-          <SelectTrigger className="w-full h-8 hover:border-gray-400 cursor-pointer">
+          <SelectTrigger className="w-full h-6 hover:border-gray-400 cursor-pointer text-xs">
             <SelectValue placeholder={companyName || 'Select'} />
           </SelectTrigger>
           <SelectContent position="popper" sideOffset={4}>
             {companies.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
+              <SelectItem key={c.id} value={c.id} className="text-xs">
                 {c.name}
               </SelectItem>
             ))}
@@ -392,107 +403,70 @@ function OpportunityRow({
       </TableCell>
 
       {/* Name */}
-      <TableCell>
+      <TableCell className="px-2 py-1">
         {isEditing && editingField === 'name' ? (
           <div className="flex items-center gap-1">
             <Input
               value={tempValue}
               onChange={(e) => setTempValue(e.target.value)}
-              className="h-8 w-40"
+              className="h-6 text-xs"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') saveEditing()
                 if (e.key === 'Escape') cancelEditing()
               }}
             />
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={saveEditing}>
+            <Button size="icon" variant="ghost" className="h-5 w-5" onClick={saveEditing}>
               <Check className="h-3 w-3" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+            <Button size="icon" variant="ghost" className="h-5 w-5" onClick={cancelEditing}>
               <X className="h-3 w-3" />
             </Button>
           </div>
         ) : (
           <span
-            className="cursor-pointer hover:text-blue-600 font-medium"
+            className="cursor-pointer hover:text-blue-600 font-medium text-xs truncate block max-w-[150px]"
             onClick={() => startEditing('name', opportunity.name)}
+            title={opportunity.name}
           >
             {opportunity.name}
           </span>
         )}
       </TableCell>
 
-      {/* Description */}
-      <TableCell className="max-w-40">
-        {isEditing && editingField === 'description' ? (
-          <div className="flex items-center gap-1">
-            <Input
-              value={tempValue}
-              onChange={(e) => setTempValue(e.target.value)}
-              className="h-8"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveEditing()
-                if (e.key === 'Escape') cancelEditing()
-              }}
-            />
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={saveEditing}>
-              <Check className="h-3 w-3" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        ) : (
-          <span
-            className="cursor-pointer hover:text-blue-600 text-sm text-gray-600 line-clamp-2"
-            onClick={() => startEditing('description', opportunity.description || '')}
-          >
-            {opportunity.description || '-'}
-          </span>
-        )}
-      </TableCell>
-
       {/* SOM */}
-      <TableCell
-        className="cursor-pointer hover:bg-gray-100"
-        onClick={() => {
-          if (!isEditing || editingField !== 'estimated_som') {
-            startEditing('estimated_som', opportunity.estimated_som?.toString() || '')
-          }
-        }}
-      >
+      <TableCell className="px-2 py-1">
         {isEditing && editingField === 'estimated_som' ? (
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <Input
               type="number"
               value={tempValue}
               onChange={(e) => setTempValue(e.target.value)}
-              className="h-8 w-24"
+              className="h-6 w-16 text-xs"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') saveEditing()
                 if (e.key === 'Escape') cancelEditing()
               }}
             />
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={saveEditing}>
+            <Button size="icon" variant="ghost" className="h-5 w-5" onClick={saveEditing}>
               <Check className="h-3 w-3" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-              <X className="h-3 w-3" />
             </Button>
           </div>
         ) : (
-          <span className="hover:text-blue-600 block min-w-[60px]">
+          <span
+            className="cursor-pointer hover:text-blue-600 text-xs"
+            onClick={() => startEditing('estimated_som', opportunity.estimated_som?.toString() || '')}
+          >
             {opportunity.estimated_som
-              ? `$${opportunity.estimated_som.toLocaleString()}`
+              ? `$${(opportunity.estimated_som / 1000).toFixed(0)}k`
               : '-'}
           </span>
         )}
       </TableCell>
 
       {/* Status */}
-      <TableCell>
+      <TableCell className="px-2 py-1">
         <StatusSelect
           value={opportunity.status}
           onChange={(value) => updateField(opportunity.id, 'status', value)}
@@ -517,46 +491,48 @@ function OpportunityRow({
         onChange={(value) => updateField(opportunity.id, 'sales_alignment_indicator', value)}
       />
 
-      {/* Next Steps */}
-      <TableCell className="max-w-40">
-        {isEditing && editingField === 'next_steps' ? (
-          <div className="flex items-center gap-1">
-            <Input
-              value={tempValue}
-              onChange={(e) => setTempValue(e.target.value)}
-              className="h-8"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveEditing()
-                if (e.key === 'Escape') cancelEditing()
-              }}
-            />
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={saveEditing}>
-              <Check className="h-3 w-3" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-              <X className="h-3 w-3" />
-            </Button>
+      {/* Demo Links */}
+      <TableCell className="text-center px-1 py-1">
+        {demoLinksCount > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center gap-0.5 text-blue-500">
+                <LinkIcon className="h-3 w-3" />
+                <span className="text-[10px]">{demoLinksCount}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <p className="font-medium text-xs">Demo Links</p>
+              {opportunity.demo_links?.map((link, i) => (
+                <p key={i} className="text-[10px] text-gray-500 truncate">{link}</p>
+              ))}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <span className="text-gray-300">-</span>
+        )}
+      </TableCell>
+
+      {/* Attachments */}
+      <TableCell className="text-center px-1 py-1">
+        {attachmentsCount > 0 ? (
+          <div className="flex items-center justify-center gap-0.5 text-blue-500">
+            <Paperclip className="h-3 w-3" />
+            <span className="text-[10px]">{attachmentsCount}</span>
           </div>
         ) : (
-          <span
-            className="cursor-pointer hover:text-blue-600 text-sm text-gray-600 line-clamp-2"
-            onClick={() => startEditing('next_steps', opportunity.next_steps || '')}
-          >
-            {opportunity.next_steps || '-'}
-          </span>
+          <span className="text-gray-300">-</span>
         )}
       </TableCell>
 
       {/* Target Date */}
-      <TableCell>
+      <TableCell className="px-2 py-1">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" className="h-8 px-2 text-xs">
-              <CalendarIcon className="h-3 w-3 mr-1" />
+            <Button variant="ghost" className="h-6 px-1 text-[10px]">
               {opportunity.target_date
-                ? format(new Date(opportunity.target_date), 'MMM d, yyyy')
-                : 'Set date'}
+                ? format(new Date(opportunity.target_date), 'MMM d')
+                : '-'}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0">
@@ -577,14 +553,14 @@ function OpportunityRow({
       </TableCell>
 
       {/* Delete */}
-      <TableCell>
+      <TableCell className="px-1 py-1">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+          className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
           onClick={() => deleteOpportunity(opportunity.id)}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3 w-3" />
         </Button>
       </TableCell>
     </TableRow>
@@ -602,17 +578,17 @@ function IndicatorCell({
   const config = INDICATOR_CONFIG[safeValue]
 
   return (
-    <TableCell className="text-center px-1">
+    <TableCell className="text-center px-1 py-1">
       <Select value={safeValue} onValueChange={onChange}>
-        <SelectTrigger className="w-14 h-8 border hover:border-gray-400 mx-auto px-2 gap-1 cursor-pointer">
-          <span className={cn('w-4 h-4 rounded-full flex-shrink-0', config.bgColor)} />
+        <SelectTrigger className="w-8 h-6 border hover:border-gray-400 mx-auto px-1 gap-0 cursor-pointer">
+          <span className={cn('w-3 h-3 rounded-full flex-shrink-0', config.bgColor)} />
         </SelectTrigger>
         <SelectContent position="popper" sideOffset={4}>
           {Object.entries(INDICATOR_CONFIG).map(([key, cfg]) => (
             <SelectItem key={key} value={key}>
               <div className="flex items-center gap-2">
                 <span className={cn('w-3 h-3 rounded-full', cfg.bgColor)} />
-                <span className="capitalize">{key}</span>
+                <span className="capitalize text-xs">{key}</span>
               </div>
             </SelectItem>
           ))}
@@ -637,18 +613,18 @@ function StatusSelect({
 
   return (
     <Select value={isKnownStatus ? normalizedValue : 'planned'} onValueChange={onChange}>
-      <SelectTrigger className="w-full h-8 hover:border-gray-400 cursor-pointer">
-        <div className="flex items-center gap-2">
-          <span className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', config.bgColor)} />
-          <span className="text-xs truncate">{displayLabel}</span>
+      <SelectTrigger className="w-full h-6 hover:border-gray-400 cursor-pointer text-xs">
+        <div className="flex items-center gap-1">
+          <span className={cn('w-2 h-2 rounded-full flex-shrink-0', config.bgColor)} />
+          <span className="text-[10px] truncate">{displayLabel}</span>
         </div>
       </SelectTrigger>
       <SelectContent position="popper" sideOffset={4}>
         {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
           <SelectItem key={key} value={key}>
             <div className="flex items-center gap-2">
-              <span className={cn('w-2.5 h-2.5 rounded-full', cfg.bgColor)} />
-              {cfg.label}
+              <span className={cn('w-2 h-2 rounded-full', cfg.bgColor)} />
+              <span className="text-xs">{cfg.label}</span>
             </div>
           </SelectItem>
         ))}
