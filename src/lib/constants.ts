@@ -10,6 +10,7 @@ export const COMPANIES = [
   'DCS',
   'E-Finances',
   'Finartis',
+  'Hyper-Reach',
   'Keystone',
   'Lilee',
   'Monkeysoft',
