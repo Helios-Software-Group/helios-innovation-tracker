@@ -3,6 +3,7 @@ import type { OpportunityStatus, IndicatorStatus, PhaseNumber } from '@/types/da
 export const COMPANIES = [
   'Alessa',
   'Alltrust',
+  'Buildsoft',
   'Cadis',
   'Carrus',
   'Cott',

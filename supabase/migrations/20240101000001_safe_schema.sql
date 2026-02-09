@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS companies (
 INSERT INTO companies (name, slug) VALUES
   ('Alessa', 'alessa'),
   ('Alltrust', 'alltrust'),
+  ('Buildsoft', 'buildsoft'),
   ('Cadis', 'cadis'),
   ('Carrus', 'carrus'),
   ('Cott', 'cott'),
